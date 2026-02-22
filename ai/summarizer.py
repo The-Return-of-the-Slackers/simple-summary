@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from ai.open_ai_client import OpenAIClient
 
-_SYSTEM_PROMPT = (
+_DEFAULT_SYSTEM_PROMPT = (
     "You are a news summarization assistant.\n"
     "Summarize the user's text in Korean in AT MOST 3 lines.\n"
     "Each line must be ONE plain sentence.\n"
@@ -15,7 +15,7 @@ _SYSTEM_PROMPT = (
     "If the text lacks information, summarize only what is present without guessing."
 )
 
-_CHUNK_PROMPT = (
+_DEFAULT_CHUNK_PROMPT = (
     "You are a news summarization assistant.\n"
     "Summarize the user's text (a partial chunk of a longer article) in Korean in AT MOST 2 lines.\n"
     "Each line must be ONE sentence.\n"
@@ -38,11 +38,15 @@ class Summarizer:
         self,
         client: OpenAIClient,
         *,
+        system_prompt: str = _DEFAULT_SYSTEM_PROMPT,
+        chunk_prompt: str = _DEFAULT_CHUNK_PROMPT,
         max_input_chars: int = 12000,
         chunk_size_chars: int = 2000,
         chunk_overlap_chars: int = 200,
     ):
         self._client = client
+        self._system_prompt = system_prompt
+        self._chunk_prompt = chunk_prompt
         self._max_input_chars = max_input_chars
         self._chunk_size_chars = chunk_size_chars
         self._chunk_overlap_chars = chunk_overlap_chars
@@ -56,7 +60,7 @@ class Summarizer:
         user_text = self._prepare_input(full_text)
 
         result = self._client.chat(
-            system_prompt=_SYSTEM_PROMPT,
+            system_prompt=self._system_prompt,
             user_text=user_text,
             max_tokens=140,
             temperature=0.2,
@@ -87,7 +91,7 @@ class Summarizer:
         partial_summaries: list[str] = []
         for chunk in chunks:
             partial = self._client.chat(
-                system_prompt=_CHUNK_PROMPT,
+                system_prompt=self._chunk_prompt,
                 user_text=chunk,
                 max_tokens=120,
                 temperature=0.2,

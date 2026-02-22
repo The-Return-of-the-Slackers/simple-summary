@@ -20,7 +20,12 @@ async def lifespan(app: FastAPI):
         api_key=os.getenv("OPENAI_API_KEY", "not-needed"),
         model=os.getenv("OPENAI_MODEL", "local-model"),
     )
-    app.state.summarizer = Summarizer(client)
+    summarizer_kwargs = {}
+    if os.getenv("SYSTEM_PROMPT"):
+        summarizer_kwargs["system_prompt"] = os.getenv("SYSTEM_PROMPT")
+    if os.getenv("CHUNK_PROMPT"):
+        summarizer_kwargs["chunk_prompt"] = os.getenv("CHUNK_PROMPT")
+    app.state.summarizer = Summarizer(client, **summarizer_kwargs)
     async with httpx.AsyncClient() as http_client:
         app.state.scraper = Scraper(http_client)
         yield
