@@ -16,7 +16,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     client = OpenAIClient(
-        base_url=os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1"),
+        base_url=os.getenv("OPENAI_BASE_URL", "http://localhost:11434/v1"),
         api_key=os.getenv("OPENAI_API_KEY", "not-needed"),
         model=os.getenv("OPENAI_MODEL", "local-model"),
     )
