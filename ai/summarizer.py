@@ -7,7 +7,8 @@ from ai.open_ai_client import OpenAIClient
 _SYSTEM_PROMPT = (
     "You are a news summarization assistant.\n"
     "Summarize the user's text in Korean in AT MOST 3 lines.\n"
-    "Each line must be ONE sentence.\n"
+    "Each line must be ONE plain sentence.\n"
+    "Do NOT use bullet points, numbering, or any prefix like *, -, •, 1. etc.\n"
     "Be concise and remove redundancy.\n"
     "Do not add opinions or speculation. Use only information from the text.\n"
     "Do not include introductions, disclaimers, titles, or extra lines.\n"
@@ -61,11 +62,15 @@ class Summarizer:
             temperature=0.2,
         )
 
-        # Enforce AT MOST 3 lines; drop preamble lines (e.g. "Here's a summary:")
+        # Enforce AT MOST 3 lines; strip bullet/number prefixes if LLM still adds them
         lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
-        content = [ln for ln in lines if ln.startswith(("*", "-", "•")) or ln[0].isdigit()]
-        result_lines = content if content else lines
-        return SummaryResult(text="\n".join(result_lines[:3]))
+        cleaned: list[str] = []
+        for ln in lines:
+            ln = ln.lstrip("*-•").strip()
+            ln = ln.lstrip("0123456789.").strip()
+            if ln:
+                cleaned.append(ln)
+        return SummaryResult(text="\n".join(cleaned[:3]))
 
     def _prepare_input(self, full_text: str) -> str:
         """Prepare input for summarization.
