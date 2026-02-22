@@ -61,9 +61,11 @@ class Summarizer:
             temperature=0.2,
         )
 
-        # Enforce AT MOST 3 lines.
+        # Enforce AT MOST 3 lines; drop preamble lines (e.g. "Here's a summary:")
         lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
-        return SummaryResult(text="\n".join(lines[:3]))
+        content = [ln for ln in lines if ln.startswith(("*", "-", "•")) or ln[0].isdigit()]
+        result_lines = content if content else lines
+        return SummaryResult(text="\n".join(result_lines[:3]))
 
     def _prepare_input(self, full_text: str) -> str:
         """Prepare input for summarization.

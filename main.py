@@ -3,11 +3,12 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from ai import OpenAIClient, Summarizer
+from ai import OpenAIClient, Scraper, Summarizer
 
 load_dotenv()
 
@@ -20,7 +21,9 @@ async def lifespan(app: FastAPI):
         model=os.getenv("OPENAI_MODEL", "local-model"),
     )
     app.state.summarizer = Summarizer(client)
-    yield
+    async with httpx.AsyncClient() as http_client:
+        app.state.scraper = Scraper(http_client)
+        yield
 
 
 app = FastAPI(lifespan=lifespan)
@@ -28,6 +31,10 @@ app = FastAPI(lifespan=lifespan)
 
 class SummaryRequest(BaseModel):
     text: str
+
+
+class ScrapeSummaryRequest(BaseModel):
+    url: str
 
 
 class SummaryResponse(BaseModel):
@@ -38,6 +45,18 @@ class SummaryResponse(BaseModel):
 async def summarize(req: SummaryRequest):
     try:
         result = app.state.summarizer.summarize(req.text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    return SummaryResponse(summary=result.text)
+
+
+@app.post("/scrape-summary", response_model=SummaryResponse)
+async def scrape_summary(req: ScrapeSummaryRequest):
+    try:
+        text = await app.state.scraper.fetch(req.url)
+        result = app.state.summarizer.summarize(text)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
